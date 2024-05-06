@@ -4,6 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
+from tqdm import tqdm
 
 
 def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
@@ -96,11 +97,11 @@ class FakeNewsDataset(Dataset):
 
     def __getitem__(self, idx):
         ### Build the prompts
-        prompt = "Is the following statement true or fake?: " + self.texts[idx]
+        prompt = "Is the following statement true or fake?: " + self.texts[idx] + " [PAD]"*10
         ### Because we use the causal language model, we need to append the label to the prompt as the labels for finetuning
         answer = prompt + "\nAnswer: " + self.labels[idx]
         ### Encode the prompt and label
-        text_encodings = self.tokenizer(prompt, truncation=True, padding='max_length', max_length=self.max_length)
+        text_encodings = self.tokenizer(prompt, truncation=True, padding='max_length', max_length=self.max_length+10)
         label_encodings = self.tokenizer(answer, truncation=True, padding='max_length', max_length=self.max_length+10) ### Save the space for label
 
         item = {key: torch.tensor(val) for key, val in text_encodings.items()}
@@ -117,14 +118,18 @@ def truncateText(text, max_length, tokenizer):
     return:
         str, truncated text
     """
-    encoded_text = tokenizer.encode(text)
-    ### Truncate the text if it is longer than max_length
-    if len(encoded_text) > max_length:
-        truncated = encoded_text[:max_length]
-    else:
-        truncated = encoded_text
-    ### Decode the truncated text
-    truncated_text = tokenizer.decode(truncated, clean_up_tokenization_spaces=True)
+    print("Truncating text...")
+    truncated_text = []
+    for line in tqdm(text):
+        encoded_text = tokenizer.encode(line)
+        ### Truncate the text if it is longer than max_length
+        if len(encoded_text) > max_length:
+            truncated = encoded_text[:max_length]
+        else:
+            truncated = encoded_text
+        ### Decode the truncated text
+        truncated_text.append(tokenizer.decode(truncated, clean_up_tokenization_spaces=True))
+    print("Finish truncating text.")
 
     return truncated_text
 
@@ -149,14 +154,15 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
             dataset = load_dataset(dataset_name, split="train")
             dataset = dataset.train_test_split(test_size=0.2) ### 80% for train
             ### Extract each column
-            texts = truncateText(dataset[split]['text']) 
+            texts = truncateText(dataset[split]['text'], max_length, tokenizer) 
             labels = dataset[split]['label']
             ### Convert 0, 1 label to "true", "fake"
-            labels = [int2str(l) for l in labels]
+            labels = [int2str(l, dataset_name) for l in labels]
         elif "liar" in dataset_name:
             dataset = load_dataset(dataset_name, split=split)
-            texts = truncateText(dataset["statement"])
+            texts = truncateText(dataset["statement"], max_length, tokenizer)
             labels = dataset["label"]
+            labels = [int2str(l, dataset_name) for l in labels]
     else:
         ### Load FakeNewsNet dataset
         texts = []
@@ -164,7 +170,7 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
         with open("/home/jkl6486/fknews/data/FakeNewsNet_Data.jsonl", "r") as f:
             for l in f:
                 data = json.loads(l)
-                texts.append(truncateText(data["text"]))
+                texts.append(truncateText(data["text"], max_length, tokenizer))
                 labels.append(data["label"])
                 labels = [int2str(l, dataset_name) for l in labels]
         ### Because FakeNewsNet is directly loaded from the file, we need to split the dataset into train and test

@@ -1,9 +1,4 @@
-from transformers import AdamW
-from utils.utils import loadModel, MRMDataset, int2str, createLoaderMRM
-import torch
-from tqdm import tqdm
 from finetune import finetune
-
 if __name__ == "__main__":
     ### Set hyperparameters
     batch_size = 4
