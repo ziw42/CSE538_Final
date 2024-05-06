@@ -3,7 +3,7 @@ CSE 538: Assignment 3
 Team Spirit: Zian Wang, Yukun Yang
 System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
 
-This script finetunes the LLaMA-2 model.
+This script finetunes the opt model.
 
 """
 
