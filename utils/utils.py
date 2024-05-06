@@ -8,6 +8,11 @@ from tqdm import tqdm
 
 
 def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
+    """
+    [I. Syntax]
+    [II. Semantics]
+    [III. Transformers]
+    """
     ### Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -79,6 +84,7 @@ def int2str(i, dataset_name):
 
 class FakeNewsDataset(Dataset):
     """
+    [I. Syntax]
     Class for customized fakenews dataset container
     params:
         texts: list, list of texts
@@ -97,10 +103,12 @@ class FakeNewsDataset(Dataset):
 
     def __getitem__(self, idx):
         ### Build the prompts
-        prompt = "Is the following statement true or fake?: " + self.texts[idx] + " [PAD]"*10
+        ### [II. Semantics]
+        prompt = "Is the following statement true or fake?: " + self.texts[idx] + " [PAD]"*10 ### [II. Semantics]
         ### Because we use the causal language model, we need to append the label to the prompt as the labels for finetuning
         answer = prompt + "\nAnswer: " + self.labels[idx]
         ### Encode the prompt and label
+        ### [I. Syntax]
         text_encodings = self.tokenizer(prompt, truncation=True, padding='max_length', max_length=self.max_length+10)
         label_encodings = self.tokenizer(answer, truncation=True, padding='max_length', max_length=self.max_length+10) ### Save the space for label
 
@@ -110,6 +118,7 @@ class FakeNewsDataset(Dataset):
 
 def truncateText(text, max_length, tokenizer):
     """
+    [I. Syntax]
     Truncate the text to max_length
     params:
         text: str, text
@@ -147,6 +156,7 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
         DataLoader, DataLoader
     """
     ### Load dataset
+    ### [I. Syntax]
     if "fakenewsnet" not in dataset_name:   
         ### Encode dataset
         if "mrm8488" in dataset_name:
@@ -165,6 +175,7 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
             labels = [int2str(l, dataset_name) for l in labels]
     else:
         ### Load FakeNewsNet dataset
+        ### [I. Syntax]
         texts = []
         labels = []
         with open("/home/jkl6486/fknews/data/FakeNewsNet_Data.jsonl", "r") as f:
@@ -174,6 +185,7 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
                 labels.append(data["label"])
                 labels = [int2str(l, dataset_name) for l in labels]
         ### Because FakeNewsNet is directly loaded from the file, we need to split the dataset into train and test
+        ### [I. Syntax]
         amount = int(len(texts))
         if split == "train":
             texts = texts[:int(amount*0.8)]

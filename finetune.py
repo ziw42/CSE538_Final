@@ -1,3 +1,15 @@
+"""
+CSE 538: Assignment 3
+Team Spirit: Zian Wang, Yukun Yang
+System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
+
+This script provides a wrapper function to finetune the model on the dataset.
+model_name could be "llama2", "opt", "gpt2", "bert"
+ds_name could be "fakenewsnet", "mrm8488", "liar"
+The rest hyperparameters (batch size, number of epochs, learning rate, etc.) are passed in kwargs
+
+"""
+
 from transformers import AdamW
 from utils.utils import loadModel, int2str, createLoader
 import torch
@@ -6,6 +18,8 @@ from tqdm import tqdm
 
 def finetune(model_name, ds_name, **kwargs):
     """
+    [I. Syntax]
+    [II. Semantics]
     Train the model
     params:
         model: model, model
@@ -24,6 +38,7 @@ def finetune(model_name, ds_name, **kwargs):
 
     ### Load model
     # LLaMA2 and GPT2 as 
+    if kwargs["continued"]
     if "llama2" in model_name:
         tokenizer, model = loadModel("meta-llama/Llama-2-7b-chat-hf")
         checkpoint_path = "/home/jkl6486/fknews/checkpoints/llama2"
