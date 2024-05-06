@@ -46,8 +46,3 @@ for batch in loader:
 ### Save the finetuned model
 model.save_pretrained('/home/jkl6486/fknews')
 print()
-
-
-
-
-
