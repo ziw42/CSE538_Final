@@ -1,3 +1,11 @@
+"""
+CSE 538: Assignment 3
+Team Spirit: Zian Wang, Yukun Yang
+System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
+
+This script makes some methods of loading the model, either the finetuned ones or the original ones from hugging face; 
+"""
+
 import torch
 import json
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
