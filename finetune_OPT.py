@@ -6,7 +6,7 @@ if __name__ == "__main__":
     num_epochs = 1
     max_length = 256
     dataset_name = "mrm8488/fake-news"
-
+    
     finetune("facebook/opt-350m", 
              dataset_name, 
              batch_size=batch_size, 
@@ -16,7 +16,7 @@ if __name__ == "__main__":
              vocab=False, 
              train=True, 
              evaluation=True, 
-             save_step=100)
+             save_step=3000)
 
 
 

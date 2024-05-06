@@ -6,7 +6,7 @@ from finetune import finetune
 
 if __name__ == "__main__":
     ### Set hyperparameters
-    batch_size = 4
+    batch_size = 2
     lr = 1e-5
     num_epochs = 1
     max_length = 256

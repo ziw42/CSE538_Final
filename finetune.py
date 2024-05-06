@@ -37,24 +37,42 @@ def finetune(model_name, ds_name, **kwargs):
     save_step = kwargs["save_step"] ### Number of steps to save the checkpoint
 
     ### Load model
-    # LLaMA2 and GPT2 as 
-    if kwargs["continued"]
-    if "llama2" in model_name:
-        tokenizer, model = loadModel("meta-llama/Llama-2-7b-chat-hf")
-        checkpoint_path = "/home/jkl6486/fknews/checkpoints/llama2"
-    elif "opt" in model_name:
-        tokenizer, model = loadModel("facebook/opt-1.3b")
-        checkpoint_path = "/home/jkl6486/fknews/checkpoints/opt"
-    # OPT and BERT as baseline models
-    elif "gpt2" in model_name:
-        tokenizer, model = loadModel("openai-community/gpt2")
-        checkpoint_path = "/home/jkl6486/fknews/checkpoints/gpt"
-    elif "bert" in model_name:
-        tokenizer, model = loadModel("google-bert/bert-base-uncased")
-        checkpoint_path = "/home/jkl6486/fknews/checkpoints/bert"
+    if kwargs["continued"]:
+        # LLaMA2 and GPT2
+        if "llama2" in model_name:
+            tokenizer, model = loadModel()
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/llama2"
+        elif "opt" in model_name:
+            tokenizer, model = loadModel("facebook/opt-1.3b")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/opt"
+        # OPT and BERT as baseline models
+        elif "gpt2" in model_name:
+            tokenizer, model = loadModel("openai-community/gpt2")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/gpt"
+        elif "bert" in model_name:
+            tokenizer, model = loadModel("google-bert/bert-base-uncased")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/bert"
+        else:
+            print("Model not found.")
+            raise ValueError
     else:
-        print("Model not found.")
-        raise ValueError
+        # LLaMA2 and GPT2
+        if "llama2" in model_name:
+            tokenizer, model = loadModel("meta-llama/Llama-2-7b-chat-hf")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/llama2"
+        elif "opt" in model_name:
+            tokenizer, model = loadModel("facebook/opt-1.3b")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/opt"
+        # OPT and BERT as baseline models
+        elif "gpt2" in model_name:
+            tokenizer, model = loadModel("openai-community/gpt2")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/gpt"
+        elif "bert" in model_name:
+            tokenizer, model = loadModel("google-bert/bert-base-uncased")
+            checkpoint_path = "/home/jkl6486/fknews/checkpoints/bert"
+        else:
+            print("Model not found.")
+            raise ValueError
 
     ### Load data
     loader = createLoader(ds_name, tokenizer, batch_size, split="train", max_length=max_length)

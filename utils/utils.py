@@ -1,11 +1,33 @@
 import torch
 import json
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from tqdm import tqdm
 
+def loadModelFinetuned(model_name, model_path):
+    """
+    Load the finetuned model
+    params:
+        model_name: str, model name
+        model_path: str, model path
+    return:
+        tokenizer: tokenizer, tokenizer
+        model: model, model
+    """
+    ### Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    ### Load model
+    ### If BERT, we use AutoModelForSequenceClassification
+    if "bert" in model_name:
+        model = AutoModelForSequenceClassification.from_pretrained(model_path)
+    ### Else it is a CausalLM
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_path, device_map="auto")
+    model.resize_token_embeddings(len(tokenizer))
+    return tokenizer, model
 
 def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
     """
@@ -19,7 +41,7 @@ def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
     ### Load model
     ### If BERT, we use AutoModelForSequenceClassification
     if "bert" in model_name:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, device_map="auto")
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
     ### Else it is a CausalLM
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
