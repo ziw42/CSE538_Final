@@ -142,19 +142,23 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
         DataLoader, DataLoader
     """
     ### Load dataset
-    if "fakenewsnet" not in dataset_name:
-        dataset = load_dataset(dataset_name, split=split)   
+    if "fakenewsnet" not in dataset_name:   
         ### Encode dataset
         if "mrm8488" in dataset_name:
+            ### Because MRMFakeNews dataset has only train split, we need to split the dataset into train and test
+            dataset = load_dataset(dataset_name, split="train")
+            dataset = dataset.train_test_split(test_size=0.2) ### 80% for train
             ### Extract each column
-            texts = truncateText(dataset['text']) 
-            labels = dataset['label']
+            texts = truncateText(dataset[split]['text']) 
+            labels = dataset[split]['label']
             ### Convert 0, 1 label to "true", "fake"
             labels = [int2str(l) for l in labels]
         elif "liar" in dataset_name:
+            dataset = load_dataset(dataset_name, split=split)
             texts = truncateText(dataset["statement"])
             labels = dataset["label"]
     else:
+        ### Load FakeNewsNet dataset
         texts = []
         labels = []
         with open("/home/jkl6486/fknews/data/FakeNewsNet_Data.jsonl", "r") as f:
@@ -163,6 +167,14 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
                 texts.append(truncateText(data["text"]))
                 labels.append(data["label"])
                 labels = [int2str(l, dataset_name) for l in labels]
+        ### Because FakeNewsNet is directly loaded from the file, we need to split the dataset into train and test
+        amount = int(len(texts))
+        if split == "train":
+            texts = texts[:int(amount*0.8)]
+            labels = labels[:int(amount*0.8)]
+        elif split == "test":
+            texts = texts[int(amount*0.8):]
+            labels = labels[int(amount*0.8):]
 
     ### Create dataset object
     dataset = FakeNewsDataset(texts=texts, labels=labels, tokenizer=tokenizer, max_length=max_length+30) ### Save the space for template in the prompt
@@ -171,6 +183,8 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     return loader
+
+
 
     
 
