@@ -4,12 +4,12 @@ Team Spirit: Zian Wang, Yukun Yang
 System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
 
 This script makes some methods for future use. They are:
-loading the model, which is either finetuned or original from hugging face;     Used concepts [II. Semantics] [III. Transformers]
+loading the model, which is either finetuned or original from hugging face;     Used concepts [III. Transformers]
 calculating the metrics, f1 or acc;
-converting labels to the uniform label;          Used concepts [II. Semantics]
-truncating the text to a maximum length;         
-loading the dataset and creating the wrapper.
-And there is a class for customized fakenews dataset container.    Used concepts [I. Syntax]
+converting labels to the uniform label;
+truncating the text to a maximum length;                           Used concepts [II. Semantics]
+loading the dataset and creating the wrapper.                      Used concepts [I. Syntax] 
+And there is a class for customized fakenews dataset container.    Used concepts [I. Syntax] [II. Semantics]
 More detailed description is below.
 """
 
@@ -46,7 +46,6 @@ def loadModelFinetuned(model_name, model_path):
 
 def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
     """
-    [II. Semantics]
     [III. Transformers]
     """
     ### Load tokenizer
@@ -80,7 +79,6 @@ def printMetrics(predictions, labels, title):
 
 def int2str(i, dataset_name):
     """
-    [II. Semantics]
     Convert labels in each dataset to the uniform label
     params:
         i: int(str), label
@@ -155,7 +153,7 @@ class FakeNewsDataset(Dataset):
 
 def truncateText(text, max_length, tokenizer):
     """
-    [I. Syntax]
+    [II. Semantics]
     Truncate the text to max_length
     params:
         text: str, text
