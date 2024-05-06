@@ -16,7 +16,8 @@ if __name__ == "__main__":
              vocab=False, 
              train=True, 
              evaluation=True, 
-             save_step=3000)
+             save_step=3000,
+             continued=False)
 
 
 
