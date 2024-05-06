@@ -1,6 +1,6 @@
 import torch
 import json
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
@@ -19,7 +19,7 @@ def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
     ### Load model
     ### If BERT, we use AutoModelForSequenceClassification
     if "bert" in model_name:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, device_map="auto")
     ### Else it is a CausalLM
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
