@@ -3,7 +3,7 @@ CSE 538: Assignment 3
 Team Spirit: Zian Wang, Yukun Yang
 System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
 
-This script finetunes the OPT model.
+This script finetunes the GPT2 model.
 
 """
 
@@ -15,8 +15,8 @@ if __name__ == "__main__":
     num_epochs = 1
     max_length = 256
     
-    ### Finetune OPT on MRMFakeNews dataset
-    finetune("opt", 
+    ### Finetune GPT2 on MRMFakeNews dataset
+    finetune("gpt2", 
              "mrm8488/fake-news", 
              batch_size=batch_size, 
              learning_rate=lr, 
@@ -27,10 +27,10 @@ if __name__ == "__main__":
              evaluation=True, 
              save_step=3000,
              continued=False,
-             model_path="/home/jkl6486/fknews/model/facebook/opt/")
+             model_path="/home/jkl6486/fknews/model/gpt2/")
 
-    ### Keep finetuning OPT on LIAR dataset
-    finetune("opt", 
+    ### Keep finetuning GPT2 on LIAR dataset
+    finetune("gpt2", 
              "liar", 
              batch_size=batch_size, 
              learning_rate=lr, 
@@ -41,10 +41,10 @@ if __name__ == "__main__":
              evaluation=True, 
              save_step=3000,
              continued=True,
-             model_path="/home/jkl6486/fknews/model/opt/")
+             model_path="/home/jkl6486/fknews/model/gpt2/")
 
     ### Evaluate model on FakeNewsNet dataset
-    finetune("opt", 
+    finetune("gpt2", 
              "fakenewsnet", 
              batch_size=batch_size, 
              learning_rate=lr, 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
              evaluation=True, 
              save_step=3000,
              continued=True,
-             model_path="/home/jkl6486/fknews/model/opt/")
+             model_path="/home/jkl6486/fknews/model/gpt2/")
 
 
 

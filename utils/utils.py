@@ -1,10 +1,26 @@
+"""
+CSE 538: Assignment 3
+Team Spirit: Zian Wang, Yukun Yang
+System: Ubuntu 20.04, Python 3.11.0, with Intel Xeon 4214, 128gb RAM, NVIDIA RTX A6000 * 4
+
+This script makes some methods for future use. They are:
+loading the model, which is either finetuned or original from hugging face;     Used concepts [III. Transformers]
+calculating the metrics, f1 or acc;
+converting labels to the uniform label;
+truncating the text to a maximum length;                           Used concepts [II. Semantics]
+loading the dataset and creating the wrapper.                      Used concepts [I. Syntax] 
+And there is a class for customized fakenews dataset container.    Used concepts [I. Syntax] [II. Semantics]
+More detailed description is below.
+"""
+
 import torch
 import json
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification, BertModel, BertConfig
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from tqdm import tqdm
+
 
 def loadModelFinetuned(model_name, model_path):
     """
@@ -16,13 +32,16 @@ def loadModelFinetuned(model_name, model_path):
         tokenizer: tokenizer, tokenizer
         model: model, model
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") ### Use CUDA by default, else CPU
     ### Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     ### Load model
     ### If BERT, we use AutoModelForSequenceClassification
     if "bert" in model_name:
-        model = AutoModelForSequenceClassification.from_pretrained(model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=1).to(device) ### Here we set num_labels=1 to use it as a regression model
+                                                                                                        ### Another consideration is there are 6 labels in LIAR dataset but only 2 in the rest
+                                                                                                        ### so here we treat it as a regression task
     ### Else it is a CausalLM
     else:
         model = AutoModelForCausalLM.from_pretrained(model_path, device_map="auto")
@@ -31,38 +50,41 @@ def loadModelFinetuned(model_name, model_path):
 
 def loadModel(model_name="meta-llama/Llama-2-7b-chat-hf"):
     """
-    [I. Syntax]
-    [II. Semantics]
     [III. Transformers]
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") ### Use CUDA by default, else CPU
     ### Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     ### Load model
-    ### If BERT, we use AutoModelForSequenceClassification
+    ### If BERT, we use AutoModelForSequenceClassification, still num_labels=1
     if "bert" in model_name:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=1).to(device)
     ### Else it is a CausalLM
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     model.resize_token_embeddings(len(tokenizer))
     return tokenizer, model
 
-def printMetrics(predictions, labels, title):
+def printMetrics(predictions, labels, dataset_name, title):
     # Function to calculate metrics in this task
     # Calculate the metrics
+    labels = [int(l) for l in labels]
+    predictions = [int(p) for p in predictions]
     accuracy = accuracy_score(labels, predictions)
     macro_f1 = f1_score(labels, predictions, average='macro')
-    precision_yes = precision_score(labels, predictions, pos_label=1)
-    recall_yes = recall_score(labels, predictions, pos_label=1)
-    f1_yes = f1_score(labels, predictions, pos_label=1)
-    precision_no = precision_score(labels, predictions, pos_label=0)
-    recall_no = recall_score(labels, predictions, pos_label=0)
-    f1_no = f1_score(labels, predictions, pos_label=0)
+    if "liar" not in dataset_name:
+        precision_yes = precision_score(labels, predictions, pos_label=1)
+        recall_yes = recall_score(labels, predictions, pos_label=1)
+        f1_yes = f1_score(labels, predictions, pos_label=1)
+        precision_no = precision_score(labels, predictions, pos_label=0)
+        recall_no = recall_score(labels, predictions, pos_label=0)
+        f1_no = f1_score(labels, predictions, pos_label=0)
     print(title)
     print("Overall: acc: " + str(accuracy) + ", f1: " + str(macro_f1))
-    print("Yes: acc: " + str(precision_yes) + ", rec: " + str(recall_yes) + ", f1: " + str(f1_yes))
-    print("No: acc: " + str(precision_no) + ", rec: " + str(recall_no) + ", f1: " + str(f1_no))
+    if "liar" not in dataset_name:
+        print("Yes: acc: " + str(precision_yes) + ", rec: " + str(recall_yes) + ", f1: " + str(f1_yes))
+        print("No: acc: " + str(precision_no) + ", rec: " + str(recall_no) + ", f1: " + str(f1_no))
 
 def int2str(i, dataset_name):
     """
@@ -104,6 +126,29 @@ def int2str(i, dataset_name):
             return("true")
 
 
+def remapLIAR(label):
+    """
+    Remap the LIAR dataset text labels to integers
+    params:
+        label: str, label
+    return:
+        float, label
+    """
+    ### Here we do not remap the labels exactly to 0-5 but -1 to 1
+    ### This is because we are using a sequence classification model and it only supports value from -1 to 1
+    if "fake" in label:
+        return(-1.0)
+    elif "half-true" in label:
+        return(-0.6)
+    elif "mostly-true" in label:
+        return(-0.2)
+    elif "true" in label:
+        return(0.2)
+    elif "barely-true" in label:
+        return(0.6)
+    else:
+        return(1.0)
+
 class FakeNewsDataset(Dataset):
     """
     [I. Syntax]
@@ -114,11 +159,13 @@ class FakeNewsDataset(Dataset):
         tokenizer: tokenizer, tokenizer
         max_length: int, max length for encoding
     """
-    def __init__(self, texts, labels, tokenizer, max_length):
+    def __init__(self, texts, labels, tokenizer, max_length, model_name, dataset_name):
         self.tokenizer = tokenizer
         self.texts = texts
         self.labels = labels
         self.max_length = max_length
+        self.model_name = model_name
+        self.dataset_name = dataset_name
 
     def __len__(self):
         return len(self.texts)
@@ -126,21 +173,40 @@ class FakeNewsDataset(Dataset):
     def __getitem__(self, idx):
         ### Build the prompts
         ### [II. Semantics]
-        prompt = "Is the following statement true or fake?: " + self.texts[idx] + " [PAD]"*10 ### [II. Semantics]
+        prompt = "You are a helpful fact checker, please check is the following statement true or fake?: " + self.texts[idx] ### [II. Semantics]
         ### Because we use the causal language model, we need to append the label to the prompt as the labels for finetuning
-        answer = prompt + "\nAnswer: " + self.labels[idx]
+        if "bert" not in self.model_name:
+            answer = prompt + " \n Answer: " + self.labels[idx] + " "
+        else:
+            if "liar" in self.dataset_name:
+                answer = remapLIAR(self.labels[idx]) ### Remap the text labels to integers (for example "true" -> 3)
+            else:
+                answer = 1.0 if self.labels[idx] == "true" else 0.0
         ### Encode the prompt and label
         ### [I. Syntax]
         text_encodings = self.tokenizer(prompt, truncation=True, padding='max_length', max_length=self.max_length+10)
-        label_encodings = self.tokenizer(answer, truncation=True, padding='max_length', max_length=self.max_length+10) ### Save the space for label
-
         item = {key: torch.tensor(val) for key, val in text_encodings.items()}
-        item['labels'] = torch.tensor(label_encodings['input_ids']) 
+        if "bert" not in self.model_name:
+            label_encodings = self.tokenizer(answer, truncation=True, padding='max_length', max_length=self.max_length+10) ### Save the space for label
+            item['labels'] = torch.tensor(label_encodings['input_ids']) 
+        else:
+            item['labels'] = torch.tensor([answer])
+        
+        ### Here we save the text labels for generative models for evaluation later
+        item['text_labels'] = self.labels[idx]
+        
         return item
+
+### Convert labels to the int label (0 or 1)
+def label2int(label):
+    if "fake" in label:
+        return 0
+    else:
+        return 1
 
 def truncateText(text, max_length, tokenizer):
     """
-    [I. Syntax]
+    [II. Semantics]
     Truncate the text to max_length
     params:
         text: str, text
@@ -151,7 +217,9 @@ def truncateText(text, max_length, tokenizer):
     """
     print("Truncating text...")
     truncated_text = []
+    idx_test = 0
     for line in tqdm(text):
+        idx_test += 1
         encoded_text = tokenizer.encode(line)
         ### Truncate the text if it is longer than max_length
         if len(encoded_text) > max_length:
@@ -159,13 +227,13 @@ def truncateText(text, max_length, tokenizer):
         else:
             truncated = encoded_text
         ### Decode the truncated text
-        truncated_text.append(tokenizer.decode(truncated, clean_up_tokenization_spaces=True))
+        truncated_text.append(tokenizer.decode(truncated, clean_up_tokenization_spaces=True, skip_special_tokens=True))
     print("Finish truncating text.")
 
     return truncated_text
 
     
-def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=512, shuffle=True):
+def createLoader(dataset_name, tokenizer, batch_size, model_name, split="train", max_length=512, shuffle=True):
     """
     Load dataset and create the DataLoader wrapper
     params:
@@ -207,7 +275,7 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
                 labels.append(data["label"])
                 labels = [int2str(l, dataset_name) for l in labels]
         ### Because FakeNewsNet is directly loaded from the file, we need to split the dataset into train and test
-        ### [I. Syntax]
+        ### [I. Syntax]                   
         amount = int(len(texts))
         if split == "train":
             texts = texts[:int(amount*0.8)]
@@ -217,12 +285,47 @@ def createLoader(dataset_name, tokenizer, batch_size, split="train", max_length=
             labels = labels[int(amount*0.8):]
 
     ### Create dataset object
-    dataset = FakeNewsDataset(texts=texts, labels=labels, tokenizer=tokenizer, max_length=max_length+30) ### Save the space for template in the prompt
+    dataset = FakeNewsDataset(texts=texts, labels=labels, tokenizer=tokenizer, max_length=max_length+30, model_name=model_name, dataset_name=dataset_name) ### Save the space for template in the prompt
 
     ### Create DataLoader object
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     return loader
+
+
+### Convert logits to the closet label from -1 to 1
+def logit2label6(logit):
+    ### List from -1 to 1
+    numbers = [-1.0, -0.6, -0.2, 0.2, 0.6, 1.0]
+    ### Find the cloest label by calculating the absolute difference
+    closest = min(numbers, key=lambda x: abs(logit - x))
+    return closest
+
+### Convert logits to the cloest label from 0 to 1
+def logit2label2(logit):
+    ### List from 0 to 1
+    numbers = [0.0, 1.0]
+    ### Find the cloest label by calculating the absolute difference
+    closest = min(numbers, key=lambda x: abs(logit - x))
+    return closest
+
+### Convert logits to the closet label from -1 to 0.2
+### If logits = -1 (fake), then return 0
+### Else if logits = 0.2 (true), then retuen 1
+def logit2label62(logit):
+    ### List from -1 to 0.2
+    numbers = [-1.0, 0.2]
+    ### Find the cloest label by calculating the absolute difference
+    closest = min(numbers, key=lambda x: abs(logit - x))
+    if closest == -1.0:
+        return 0
+    else:
+        return 1
+
+
+
+
+
 
 
 
